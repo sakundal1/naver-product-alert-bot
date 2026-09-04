@@ -1,4 +1,5 @@
 import requests
+import json
 
 QUERY = "리프트바운드"
 
@@ -22,35 +23,37 @@ HEADERS = {
 
 
 def find_products(obj, products):
-    """
-    JSON 전체를 돌아다니면서
-    productName + productId가 있는 상품 데이터를 찾는다.
-    """
 
+    # ----------------------------------------
+    # 1. 딕셔너리
+    # ----------------------------------------
     if isinstance(obj, dict):
 
-        # 상품 데이터인지 확인
+        # 상품 데이터 발견
         if "productName" in obj and "productId" in obj:
 
-            product_name = obj.get("productName")
             product_id = obj.get("productId")
+            product_name = obj.get("productName")
 
-            # 중복 방지
-            if product_id is not None:
+            if product_id is not None and product_name:
 
                 product_id = str(product_id)
 
+                # 중복 제거
                 if not any(
                     p["product_id"] == product_id
                     for p in products
                 ):
 
-                    click_info = obj.get("productClickUrl")
-
                     product_url = None
+
+                    click_info = obj.get("productClickUrl")
 
                     if isinstance(click_info, dict):
                         product_url = click_info.get("pcUrl")
+
+                    elif isinstance(click_info, str):
+                        product_url = click_info
 
                     products.append({
                         "product_id": product_id,
@@ -60,14 +63,38 @@ def find_products(obj, products):
                         "url": product_url,
                     })
 
-        # 모든 하위 데이터 계속 검색
+        # 내부 데이터 계속 탐색
         for value in obj.values():
             find_products(value, products)
 
+    # ----------------------------------------
+    # 2. 리스트
+    # ----------------------------------------
     elif isinstance(obj, list):
 
         for item in obj:
             find_products(item, products)
+
+    # ----------------------------------------
+    # 3. JSON 문자열
+    # ----------------------------------------
+    elif isinstance(obj, str):
+
+        text = obj.strip()
+
+        # JSON처럼 보이는 문자열만 검사
+        if (
+            (text.startswith("{") and text.endswith("}"))
+            or
+            (text.startswith("[") and text.endswith("]"))
+        ):
+
+            try:
+                parsed = json.loads(text)
+                find_products(parsed, products)
+
+            except Exception:
+                pass
 
 
 def get_products():
@@ -80,6 +107,7 @@ def get_products():
     )
 
     print("HTTP 상태 코드:", response.status_code)
+    print("응답 크기:", len(response.text))
 
     response.raise_for_status()
 
@@ -87,7 +115,6 @@ def get_products():
 
     products = []
 
-    # JSON 전체를 탐색
     find_products(data, products)
 
     return products
@@ -96,7 +123,7 @@ def get_products():
 def main():
 
     print("=" * 60)
-    print("네이버 상품 검색 결과")
+    print("네이버 상품 검색 테스트")
     print("=" * 60)
 
     print()
@@ -108,38 +135,42 @@ def main():
 
         products = get_products()
 
+        print()
         print("=" * 60)
         print("찾은 상품 수:", len(products))
         print("=" * 60)
 
-        if not products:
-            print()
-            print("⚠️ 상품을 찾지 못했습니다.")
-            print("네이버 응답은 정상적으로 받았지만")
-            print("상품 데이터 구조가 예상과 다를 수 있습니다.")
-
-        for i, product in enumerate(products, start=1):
+        if len(products) == 0:
 
             print()
-            print(f"[{i}]")
+            print("⚠️ 아직 상품을 찾지 못했습니다.")
+            print()
+            print("네이버 응답은 정상적으로 받았습니다.")
+            print("상품 데이터 구조를 추가로 확인해야 합니다.")
 
-            print("상품명:", product["name"])
+        else:
 
-            price = product["price"]
+            for i, product in enumerate(products, start=1):
 
-            if price is not None:
+                print()
+                print(f"[{i}]")
+                print("-" * 40)
 
-                try:
-                    print("가격:", f"{int(price):,}원")
-                except:
-                    print("가격:", price)
+                print("상품명:", product["name"])
 
-            else:
-                print("가격: 확인 불가")
+                price = product["price"]
 
-            print("판매처:", product["mall"])
-            print("상품 ID:", product["product_id"])
-            print("상품 URL:", product["url"])
+                if price is not None:
+                    try:
+                        print("가격:", f"{int(price):,}원")
+                    except Exception:
+                        print("가격:", price)
+                else:
+                    print("가격: 확인 불가")
+
+                print("판매처:", product["mall"])
+                print("상품 ID:", product["product_id"])
+                print("상품 URL:", product["url"])
 
         print()
         print("=" * 60)
