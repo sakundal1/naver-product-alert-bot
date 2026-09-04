@@ -411,14 +411,6 @@ def main():
 
     print()
 
-    print("검색어:", QUERY)
-
-    print()
-
-    # ========================================================
-    # 기존 상품 목록 불러오기
-    # ========================================================
-
     seen_products = load_seen_products()
 
     print(
@@ -428,90 +420,37 @@ def main():
 
     print()
 
+    all_products = []
+
     # ========================================================
-    # 네이버 상품 가져오기
+    # 여러 검색어 검색
     # ========================================================
 
-    print("상품 정보 가져오는 중...")
+    for query in QUERIES:
 
-    print()
-
-    try:
-
-        products = get_products()
-
-    except Exception as e:
-
-        print()
         print("=" * 60)
-        print("❌ 네이버 상품 가져오기 실패")
+        print("검색어:", query)
         print("=" * 60)
 
-        print(
-            type(e).__name__,
-            e
-        )
+        try:
 
-        return
-
-    print()
-
-    print("=" * 60)
-
-    print(
-        "현재 상품 수:",
-        len(products)
-    )
-
-    print("=" * 60)
-
-    # ========================================================
-    # 상품 목록 출력
-    # ========================================================
-
-    for i, product in enumerate(
-        products,
-        start=1
-    ):
-
-        print()
-
-        print(f"[{i}]")
-
-        print("-" * 50)
-
-        print(
-            "상품명:",
-            product["name"]
-        )
-
-        if product["price"] is not None:
+            products = get_products(query)
 
             print(
-                "가격:",
-                f"{int(product['price']):,}원"
+                "현재 상품 수:",
+                len(products)
             )
 
-        else:
+            all_products.extend(products)
+
+        except Exception as e:
 
             print(
-                "가격: 확인 불가"
+                "❌ 상품 가져오기 실패:",
+                query,
+                type(e).__name__,
+                e
             )
-
-        print(
-            "판매처:",
-            product["mall"]
-        )
-
-        print(
-            "상품 ID:",
-            product["product_id"]
-        )
-
-        print(
-            "상품 URL:",
-            product["url"]
-        )
 
     # ========================================================
     # 새 상품 찾기
@@ -521,15 +460,23 @@ def main():
 
     current_product_ids = set()
 
-    for product in products:
+    for product in all_products:
 
         product_id = product["product_id"]
 
-        current_product_ids.add(
-            product_id
+        # 검색어별로 상품을 구분하기 위해
+        # 검색어 + 상품 ID를 함께 사용
+        seen_key = (
+            product["query"]
+            + "|"
+            + product_id
         )
 
-        if product_id not in seen_products:
+        current_product_ids.add(
+            seen_key
+        )
+
+        if seen_key not in seen_products:
 
             new_products.append(
                 product
@@ -538,6 +485,10 @@ def main():
     print()
 
     print("=" * 60)
+    print(
+        "전체 검색 상품 수:",
+        len(all_products)
+    )
 
     print(
         "새 상품 수:",
