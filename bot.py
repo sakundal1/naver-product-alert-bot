@@ -8,7 +8,11 @@ import json
 # 설정
 # ============================================================
 
-QUERY = "리프트바운드"
+QUERIES = [
+    "리프트바운드",
+    "디지몬 카드",
+    "원피스 카드",
+]
 
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
 
