@@ -1,5 +1,4 @@
 import requests
-import json
 
 QUERY = "리프트바운드"
 
@@ -22,49 +21,96 @@ HEADERS = {
 }
 
 
+def get_products():
+    response = requests.get(
+        URL,
+        params=PARAMS,
+        headers=HEADERS,
+        timeout=30
+    )
+
+    print("HTTP 상태 코드:", response.status_code)
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    products = []
+
+    # 네이버 응답 구조
+    result_data = data.get("data", {})
+    slots = result_data.get("slots", [])
+
+    for slot in slots:
+        product = slot.get("data", {})
+
+        # 상품 카드만 추출
+        if product.get("cardType") != "ORGANIC_CARD":
+            continue
+
+        product_name = product.get("productName")
+        product_id = product.get("productId")
+        mall_name = product.get("mallName")
+        sale_price = product.get("salePrice")
+        product_url = product.get("productClickUrl", {}).get("pcUrl")
+
+        if not product_name or not product_id:
+            continue
+
+        products.append({
+            "product_id": str(product_id),
+            "name": product_name,
+            "price": sale_price,
+            "mall": mall_name,
+            "url": product_url,
+        })
+
+    return products
+
+
 def main():
     print("=" * 60)
-    print("네이버 쇼핑 공개 JSON 테스트")
+    print("네이버 상품 검색 결과")
     print("=" * 60)
 
-    print(f"\n검색어: {QUERY}")
-    print("네이버 쇼핑 데이터 요청 중...")
+    print()
+    print("검색어:", QUERY)
+    print("상품 정보 가져오는 중...")
+    print()
 
     try:
-        response = requests.get(
-            URL,
-            params=PARAMS,
-            headers=HEADERS,
-            timeout=30
-        )
+        products = get_products()
 
-        print("\nHTTP 상태 코드:", response.status_code)
-        print("응답 크기:", len(response.text))
+        print("=" * 60)
+        print(f"상품 수: {len(products)}")
+        print("=" * 60)
 
-        print("\n응답 앞부분:")
-        print(response.text[:3000])
+        for i, product in enumerate(products, start=1):
+            print()
+            print(f"[{i}]")
+            print("상품명:", product["name"])
 
-        if response.status_code != 200:
-            print("\n❌ 요청 실패")
-            return
+            price = product["price"]
 
-        try:
-            data = response.json()
-        except Exception:
-            print("\n❌ JSON 응답이 아닙니다.")
-            return
+            if price is not None:
+                print("가격:", f"{int(price):,}원")
+            else:
+                print("가격: 확인 불가")
 
-        print("\n✅ JSON 응답 확인!")
+            print("판매처:", product["mall"])
+            print("상품 ID:", product["product_id"])
+            print("상품 URL:", product["url"])
 
-        print("\n데이터 구조:")
-        print(json.dumps(data, ensure_ascii=False)[:5000])
-
-        print("\n" + "=" * 60)
-        print("✅ 1차 테스트 성공")
+        print()
+        print("=" * 60)
+        print("✅ 상품 추출 성공")
         print("=" * 60)
 
     except Exception as e:
-        print("\n❌ 오류 발생")
+        print()
+        print("=" * 60)
+        print("❌ 오류 발생")
+        print("=" * 60)
         print(type(e).__name__, e)
 
 
