@@ -37,38 +37,54 @@ def get_products():
 
     products = []
 
-    # 네이버 응답 구조
-    result_data = data.get("data", {})
-    slots = result_data.get("slots", [])
+    # 실제 응답:
+    # data → list → 첫 번째 항목 → slots
+    result_list = data.get("data", [])
 
-    for slot in slots:
-        product = slot.get("data", {})
+    if not result_list:
+        print("⚠️ data가 비어 있습니다.")
+        return products
 
-        # 상품 카드만 추출
-        if product.get("cardType") != "ORGANIC_CARD":
-            continue
+    for result in result_list:
 
-        product_name = product.get("productName")
-        product_id = product.get("productId")
-        mall_name = product.get("mallName")
-        sale_price = product.get("salePrice")
-        product_url = product.get("productClickUrl", {}).get("pcUrl")
+        slots = result.get("slots", [])
 
-        if not product_name or not product_id:
-            continue
+        for slot in slots:
 
-        products.append({
-            "product_id": str(product_id),
-            "name": product_name,
-            "price": sale_price,
-            "mall": mall_name,
-            "url": product_url,
-        })
+            product = slot.get("data", {})
+
+            # 상품 카드만 추출
+            if product.get("cardType") != "ORGANIC_CARD":
+                continue
+
+            product_name = product.get("productName")
+            product_id = product.get("productId")
+            mall_name = product.get("mallName")
+            sale_price = product.get("salePrice")
+
+            click_info = product.get("productClickUrl", {})
+
+            if isinstance(click_info, dict):
+                product_url = click_info.get("pcUrl")
+            else:
+                product_url = None
+
+            if not product_name or not product_id:
+                continue
+
+            products.append({
+                "product_id": str(product_id),
+                "name": product_name,
+                "price": sale_price,
+                "mall": mall_name,
+                "url": product_url,
+            })
 
     return products
 
 
 def main():
+
     print("=" * 60)
     print("네이버 상품 검색 결과")
     print("=" * 60)
@@ -79,6 +95,7 @@ def main():
     print()
 
     try:
+
         products = get_products()
 
         print("=" * 60)
@@ -86,14 +103,19 @@ def main():
         print("=" * 60)
 
         for i, product in enumerate(products, start=1):
+
             print()
             print(f"[{i}]")
+
             print("상품명:", product["name"])
 
             price = product["price"]
 
             if price is not None:
-                print("가격:", f"{int(price):,}원")
+                try:
+                    print("가격:", f"{int(price):,}원")
+                except:
+                    print("가격:", price)
             else:
                 print("가격: 확인 불가")
 
@@ -107,10 +129,12 @@ def main():
         print("=" * 60)
 
     except Exception as e:
+
         print()
         print("=" * 60)
         print("❌ 오류 발생")
         print("=" * 60)
+
         print(type(e).__name__, e)
 
 
