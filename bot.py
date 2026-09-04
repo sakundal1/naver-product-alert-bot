@@ -541,4 +541,59 @@ def main():
 
 if __name__ == "__main__":
 
-    main()
+    print("=" * 60)
+    print("네이버 상품 URL 구조 확인")
+    print("=" * 60)
+
+    response = requests.get(
+        NAVER_URL,
+        params=PARAMS,
+        headers=HEADERS,
+        timeout=30
+    )
+
+    print("HTTP 상태 코드:", response.status_code)
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    result_data = data.get("data", [])
+
+    if not result_data:
+        print("❌ data가 없습니다.")
+        exit()
+
+    slots = result_data[0].get("slots", [])
+
+    print("상품 수:", len(slots))
+    print()
+
+    # 첫 번째 상품만 자세히 확인
+    for slot in slots[:1]:
+
+        product = slot.get("data", {})
+
+        print("=" * 60)
+        print("첫 번째 상품의 URL 관련 정보")
+        print("=" * 60)
+
+        for key, value in product.items():
+
+            key_lower = key.lower()
+
+            if (
+                "url" in key_lower
+                or "link" in key_lower
+                or "click" in key_lower
+                or "product" in key_lower
+            ):
+
+                print()
+                print("필드:", key)
+                print("값:", value)
+
+    print()
+    print("=" * 60)
+    print("✅ URL 구조 확인 완료")
+    print("=" * 60)
