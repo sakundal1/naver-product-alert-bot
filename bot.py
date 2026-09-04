@@ -1,8 +1,9 @@
 import requests
 import re
+import os
 
 QUERY = "리프트바운드"
-
+DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
 URL = "https://ns-portal.shopping.naver.com/api/v2/shopping-paged-slot"
 
 PARAMS = {
@@ -21,6 +22,23 @@ HEADERS = {
     "Referer": "https://search.shopping.naver.com/",
 }
 
+def send_discord_message(message):
+
+    if not DISCORD_WEBHOOK_URL:
+        print("❌ DISCORD_WEBHOOK_URL이 설정되지 않았습니다.")
+        return
+
+    response = requests.post(
+        DISCORD_WEBHOOK_URL,
+        json={
+            "content": message
+        },
+        timeout=30
+    )
+
+    print("디스코드 응답 코드:", response.status_code)
+
+    response.raise_for_status()
 
 def clean_product_name(name):
     """네이버 검색어 강조용 <mark> 태그 제거"""
@@ -123,6 +141,9 @@ def main():
 
     print()
     print("검색어:", QUERY)
+    send_discord_message(
+    f"🟢 네이버 쇼핑 알림 봇 테스트\n검색어: {QUERY}\n\n봇이 정상적으로 디스코드에 연결되었습니다."
+)
     print("상품 정보 가져오는 중...")
     print()
 
