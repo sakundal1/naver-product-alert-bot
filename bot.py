@@ -125,14 +125,113 @@ def send_discord_message(message):
 # 네이버 상품 가져오기
 # ============================================================
 
-def get_products():
+def get_products(query):
+
+    params = {
+        "query": query,
+        "source": "shp_gui",
+    }
 
     response = requests.get(
         NAVER_URL,
-        params=PARAMS,
+        params=params,
         headers=HEADERS,
         timeout=30
     )
+
+    print("HTTP 상태 코드:", response.status_code)
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    products = []
+
+    result_data = data.get("data", [])
+
+    if not result_data:
+        return products
+
+    first_result = result_data[0]
+
+    slots = first_result.get("slots", [])
+
+    for slot in slots:
+
+        product = slot.get("data", {})
+
+        if not isinstance(product, dict):
+            continue
+
+        product_name = product.get("productName")
+
+        if not product_name:
+            continue
+
+        product_benefit = product.get(
+            "productBenefit",
+            {}
+        )
+
+        product_id = None
+
+        if isinstance(product_benefit, dict):
+
+            product_id = product_benefit.get(
+                "productId"
+            )
+
+        if product_id is None:
+
+            product_id = product.get(
+                "channelProductId"
+            )
+
+        if product_id is None:
+            continue
+
+        product_url_data = product.get(
+            "productUrl",
+            {}
+        )
+
+        product_url = None
+
+        if isinstance(product_url_data, dict):
+
+            product_url = product_url_data.get(
+                "pcUrl"
+            )
+
+        product_name = clean_product_name(
+            product_name
+        )
+
+        sale_price = product.get(
+            "salePrice"
+        )
+
+        mall_name = product.get(
+            "mallName"
+        )
+
+        products.append({
+
+            "product_id": str(product_id),
+
+            "name": product_name,
+
+            "price": sale_price,
+
+            "mall": mall_name,
+
+            "url": product_url,
+
+            "query": query,
+
+        })
+
+    return products
 
     print("HTTP 상태 코드:", response.status_code)
 
