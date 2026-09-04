@@ -21,7 +21,57 @@ HEADERS = {
 }
 
 
+def find_products(obj, products):
+    """
+    JSON 전체를 돌아다니면서
+    productName + productId가 있는 상품 데이터를 찾는다.
+    """
+
+    if isinstance(obj, dict):
+
+        # 상품 데이터인지 확인
+        if "productName" in obj and "productId" in obj:
+
+            product_name = obj.get("productName")
+            product_id = obj.get("productId")
+
+            # 중복 방지
+            if product_id is not None:
+
+                product_id = str(product_id)
+
+                if not any(
+                    p["product_id"] == product_id
+                    for p in products
+                ):
+
+                    click_info = obj.get("productClickUrl")
+
+                    product_url = None
+
+                    if isinstance(click_info, dict):
+                        product_url = click_info.get("pcUrl")
+
+                    products.append({
+                        "product_id": product_id,
+                        "name": product_name,
+                        "price": obj.get("salePrice"),
+                        "mall": obj.get("mallName"),
+                        "url": product_url,
+                    })
+
+        # 모든 하위 데이터 계속 검색
+        for value in obj.values():
+            find_products(value, products)
+
+    elif isinstance(obj, list):
+
+        for item in obj:
+            find_products(item, products)
+
+
 def get_products():
+
     response = requests.get(
         URL,
         params=PARAMS,
@@ -37,48 +87,8 @@ def get_products():
 
     products = []
 
-    # 실제 응답:
-    # data → list → 첫 번째 항목 → slots
-    result_list = data.get("data", [])
-
-    if not result_list:
-        print("⚠️ data가 비어 있습니다.")
-        return products
-
-    for result in result_list:
-
-        slots = result.get("slots", [])
-
-        for slot in slots:
-
-            product = slot.get("data", {})
-
-            # 상품 카드만 추출
-            if product.get("cardType") != "ORGANIC_CARD":
-                continue
-
-            product_name = product.get("productName")
-            product_id = product.get("productId")
-            mall_name = product.get("mallName")
-            sale_price = product.get("salePrice")
-
-            click_info = product.get("productClickUrl", {})
-
-            if isinstance(click_info, dict):
-                product_url = click_info.get("pcUrl")
-            else:
-                product_url = None
-
-            if not product_name or not product_id:
-                continue
-
-            products.append({
-                "product_id": str(product_id),
-                "name": product_name,
-                "price": sale_price,
-                "mall": mall_name,
-                "url": product_url,
-            })
+    # JSON 전체를 탐색
+    find_products(data, products)
 
     return products
 
@@ -99,8 +109,14 @@ def main():
         products = get_products()
 
         print("=" * 60)
-        print(f"상품 수: {len(products)}")
+        print("찾은 상품 수:", len(products))
         print("=" * 60)
+
+        if not products:
+            print()
+            print("⚠️ 상품을 찾지 못했습니다.")
+            print("네이버 응답은 정상적으로 받았지만")
+            print("상품 데이터 구조가 예상과 다를 수 있습니다.")
 
         for i, product in enumerate(products, start=1):
 
@@ -112,10 +128,12 @@ def main():
             price = product["price"]
 
             if price is not None:
+
                 try:
                     print("가격:", f"{int(price):,}원")
                 except:
                     print("가격:", price)
+
             else:
                 print("가격: 확인 불가")
 
@@ -125,7 +143,7 @@ def main():
 
         print()
         print("=" * 60)
-        print("✅ 상품 추출 성공")
+        print("✅ 테스트 완료")
         print("=" * 60)
 
     except Exception as e:
