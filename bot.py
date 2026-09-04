@@ -38,7 +38,6 @@ SEEN_FILE = "seen_products.json"
 # ============================================================
 
 def clean_product_name(name):
-    """네이버 검색어 강조용 <mark> 태그 제거"""
 
     if not name:
         return ""
@@ -50,7 +49,7 @@ def clean_product_name(name):
 
 
 # ============================================================
-# 기존에 확인한 상품 ID 불러오기
+# 기존 상품 목록 불러오기
 # ============================================================
 
 def load_seen_products():
@@ -139,11 +138,9 @@ def get_products():
 
     products = []
 
-    # 실제 네이버 구조
     result_data = data.get("data", [])
 
     if not result_data:
-
         return products
 
     first_result = result_data[0]
@@ -155,14 +152,15 @@ def get_products():
         product = slot.get("data", {})
 
         if not isinstance(product, dict):
-
             continue
 
+        # ====================================================
         # 상품명
+        # ====================================================
+
         product_name = product.get("productName")
 
         if not product_name:
-
             continue
 
         # ====================================================
@@ -182,24 +180,30 @@ def get_products():
                 "productId"
             )
 
+        # productBenefit에 없으면 channelProductId 사용
         if product_id is None:
 
+            product_id = product.get(
+                "channelProductId"
+            )
+
+        if product_id is None:
             continue
 
         # ====================================================
-        # 상품 URL
+        # 실제 상품 URL
         # ====================================================
 
-        product_click_url = product.get(
-            "productClickUrl",
+        product_url_data = product.get(
+            "productUrl",
             {}
         )
 
         product_url = None
 
-        if isinstance(product_click_url, dict):
+        if isinstance(product_url_data, dict):
 
-            product_url = product_click_url.get(
+            product_url = product_url_data.get(
                 "pcUrl"
             )
 
@@ -277,13 +281,19 @@ def send_product_alert(product):
 
     if url:
 
-        message += f"🔗 **상품 보기:** {url}"
+        message += (
+            f"🔗 **상품 바로가기:** {url}"
+        )
 
     else:
 
-        message += "🔗 상품 URL 확인 불가"
+        message += (
+            "🔗 상품 URL 확인 불가"
+        )
 
-    return send_discord_message(message)
+    return send_discord_message(
+        message
+    )
 
 
 # ============================================================
@@ -434,7 +444,7 @@ def main():
     print("=" * 60)
 
     # ========================================================
-    # 첫 실행 여부 확인
+    # 첫 실행
     # ========================================================
 
     if len(seen_products) == 0:
@@ -530,7 +540,9 @@ def main():
 
     print("=" * 60)
 
-    print("✅ 모니터링 완료")
+    print(
+        "✅ 모니터링 완료"
+    )
 
     print("=" * 60)
 
@@ -541,59 +553,4 @@ def main():
 
 if __name__ == "__main__":
 
-    print("=" * 60)
-    print("네이버 상품 URL 구조 확인")
-    print("=" * 60)
-
-    response = requests.get(
-        NAVER_URL,
-        params=PARAMS,
-        headers=HEADERS,
-        timeout=30
-    )
-
-    print("HTTP 상태 코드:", response.status_code)
-
-    response.raise_for_status()
-
-    data = response.json()
-
-    result_data = data.get("data", [])
-
-    if not result_data:
-        print("❌ data가 없습니다.")
-        exit()
-
-    slots = result_data[0].get("slots", [])
-
-    print("상품 수:", len(slots))
-    print()
-
-    # 첫 번째 상품만 자세히 확인
-    for slot in slots[:1]:
-
-        product = slot.get("data", {})
-
-        print("=" * 60)
-        print("첫 번째 상품의 URL 관련 정보")
-        print("=" * 60)
-
-        for key, value in product.items():
-
-            key_lower = key.lower()
-
-            if (
-                "url" in key_lower
-                or "link" in key_lower
-                or "click" in key_lower
-                or "product" in key_lower
-            ):
-
-                print()
-                print("필드:", key)
-                print("값:", value)
-
-    print()
-    print("=" * 60)
-    print("✅ URL 구조 확인 완료")
-    print("=" * 60)
+    main()
