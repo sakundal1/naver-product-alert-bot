@@ -1,5 +1,5 @@
 import requests
-import json
+import re
 
 QUERY = "리프트바운드"
 
@@ -22,174 +22,142 @@ HEADERS = {
 }
 
 
-def inspect_data(obj, path="data", depth=0):
+def clean_product_name(name):
+    """네이버 검색어 강조용 <mark> 태그 제거"""
 
-    # 너무 깊게 내려가지 않음
-    if depth > 10:
-        return
+    if not name:
+        return ""
 
-    # 딕셔너리
-    if isinstance(obj, dict):
+    name = re.sub(r"<mark>", "", name)
+    name = re.sub(r"</mark>", "", name)
 
-        keys = list(obj.keys())
+    return name
 
-        # 상품 관련 키가 있는지 확인
-        product_keys = [
-            "productName",
-            "productId",
-            "mallName",
-            "salePrice",
-            "productClickUrl"
-        ]
 
-        found = [key for key in product_keys if key in obj]
+def get_products():
 
-        if found:
-            print()
-            print("=" * 60)
-            print("🔎 상품 관련 데이터 발견!")
-            print("=" * 60)
+    response = requests.get(
+        URL,
+        params=PARAMS,
+        headers=HEADERS,
+        timeout=30
+    )
 
-            print("위치:", path)
-            print("발견한 키:", found)
+    print("HTTP 상태 코드:", response.status_code)
 
-            for key in found:
-                value = obj.get(key)
+    response.raise_for_status()
 
-                print()
-                print(f"{key}:")
-                print(str(value)[:1000])
+    data = response.json()
 
-        # 하위 데이터 탐색
-        for key, value in obj.items():
-            inspect_data(
-                value,
-                f"{path}.{key}",
-                depth + 1
-            )
+    products = []
 
-    # 리스트
-    elif isinstance(obj, list):
+    # 실제 네이버 구조
+    result_data = data.get("data", [])
 
-        for i, item in enumerate(obj):
-            inspect_data(
-                item,
-                f"{path}[{i}]",
-                depth + 1
-            )
+    if not result_data:
+        return products
 
-    # 문자열 안에 JSON이 들어있는 경우
-    elif isinstance(obj, str):
+    first_result = result_data[0]
 
-        text = obj.strip()
+    slots = first_result.get("slots", [])
 
-        if len(text) < 2:
-            return
+    for slot in slots:
 
-        # 문자열 안에 productName이 있는지 먼저 확인
-        if "productName" in text or "productId" in text:
+        product = slot.get("data", {})
 
-            print()
-            print("=" * 60)
-            print("🔎 상품 데이터가 문자열 안에서 발견!")
-            print("=" * 60)
+        if not isinstance(product, dict):
+            continue
 
-            print("위치:", path)
+        product_name = product.get("productName")
 
-            # 상품명 주변 내용 출력
-            index = text.find("productName")
+        if not product_name:
+            continue
 
-            if index >= 0:
-                start = max(0, index - 300)
-                end = min(len(text), index + 1500)
+        # 상품 ID
+        product_benefit = product.get("productBenefit", {})
 
-                print()
-                print(text[start:end])
+        product_id = None
 
-        # JSON 문자열이면 다시 파싱
-        if (
-            (text.startswith("{") and text.endswith("}"))
-            or
-            (text.startswith("[") and text.endswith("]"))
-        ):
+        if isinstance(product_benefit, dict):
+            product_id = product_benefit.get("productId")
 
-            try:
-                parsed = json.loads(text)
+        if product_id is None:
+            continue
 
-                inspect_data(
-                    parsed,
-                    path + " → JSON문자열",
-                    depth + 1
-                )
+        # 상품 URL
+        product_click_url = product.get(
+            "productClickUrl",
+            {}
+        )
 
-            except Exception:
-                pass
+        product_url = None
+
+        if isinstance(product_click_url, dict):
+            product_url = product_click_url.get("pcUrl")
+
+        # 상품명 정리
+        product_name = clean_product_name(product_name)
+
+        # 가격
+        sale_price = product.get("salePrice")
+
+        # 판매처
+        mall_name = product.get("mallName")
+
+        products.append({
+            "product_id": str(product_id),
+            "name": product_name,
+            "price": sale_price,
+            "mall": mall_name,
+            "url": product_url,
+        })
+
+    return products
 
 
 def main():
 
     print("=" * 60)
-    print("네이버 쇼핑 데이터 구조 진단")
+    print("네이버 쇼핑 상품 추출")
     print("=" * 60)
 
     print()
     print("검색어:", QUERY)
-    print("데이터 요청 중...")
+    print("상품 정보 가져오는 중...")
     print()
 
     try:
 
-        response = requests.get(
-            URL,
-            params=PARAMS,
-            headers=HEADERS,
-            timeout=30
-        )
-
-        print("HTTP 상태 코드:", response.status_code)
-        print("응답 크기:", len(response.text))
-
-        response.raise_for_status()
-
-        # 원본 응답에서 상품 키가 존재하는지도 확인
-        print()
-        print("=" * 60)
-        print("원본 응답 확인")
-        print("=" * 60)
-
-        if "productName" in response.text:
-            print("✅ 원본 응답에 productName이 존재합니다.")
-        else:
-            print("❌ 원본 응답에 productName이 없습니다.")
-
-        if "productId" in response.text:
-            print("✅ 원본 응답에 productId가 존재합니다.")
-        else:
-            print("❌ 원본 응답에 productId가 없습니다.")
-
-        # JSON 변환
-        data = response.json()
-
-        print()
-        print("JSON 변환 성공")
-        print("최상위 타입:", type(data).__name__)
-
-        if isinstance(data, dict):
-            print("최상위 키:", list(data.keys()))
-
-        elif isinstance(data, list):
-            print("리스트 길이:", len(data))
+        products = get_products()
 
         print()
         print("=" * 60)
-        print("상품 데이터 위치 탐색 시작")
+        print("상품 수:", len(products))
         print("=" * 60)
 
-        inspect_data(data)
+        for i, product in enumerate(products, start=1):
+
+            print()
+            print(f"[{i}]")
+            print("-" * 50)
+
+            print("상품명:", product["name"])
+
+            if product["price"] is not None:
+                print(
+                    "가격:",
+                    f"{int(product['price']):,}원"
+                )
+            else:
+                print("가격: 확인 불가")
+
+            print("판매처:", product["mall"])
+            print("상품 ID:", product["product_id"])
+            print("상품 URL:", product["url"])
 
         print()
         print("=" * 60)
-        print("✅ 진단 완료")
+        print("✅ 상품 추출 성공")
         print("=" * 60)
 
     except Exception as e:
