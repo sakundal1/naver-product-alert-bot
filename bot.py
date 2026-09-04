@@ -1,70 +1,104 @@
-from playwright.sync_api import sync_playwright
+import requests
+import json
 
-URL = "https://search.shopping.naver.com/search/all?query=%EB%A6%AC%ED%94%84%ED%8A%B8%EB%B0%94%EC%9A%B4%EB%93%9C&sort=date&pagingIndex=1&pagingSize=40&productSet=total&viewType=list"
+QUERY = "리프트바운드"
+
+URL = "https://search.shopping.naver.com/api/search/all"
+
+PARAMS = {
+    "sort": "date",
+    "pagingIndex": 1,
+    "pagingSize": 40,
+    "viewType": "list",
+    "productSet": "total",
+    "query": QUERY,
+    "origQuery": QUERY,
+    "adQuery": QUERY,
+}
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/150.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Referer": "https://search.shopping.naver.com/",
+}
+
 
 def main():
     print("=" * 60)
-    print("네이버 자동 접속 테스트")
+    print("네이버 쇼핑 API 테스트")
     print("=" * 60)
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True
-        )
+    print(f"\n검색어: {QUERY}")
+    print("네이버 쇼핑 데이터 요청 중...")
 
-        page = browser.new_page(
-            viewport={
-                "width": 1920,
-                "height": 1080
-            },
-            locale="ko-KR",
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/150.0.0.0 Safari/537.36"
-            )
-        )
-
-        print("\n[1] 네이버 접속 중...")
-
-        page.goto(
+    try:
+        response = requests.get(
             URL,
-            wait_until="domcontentloaded",
-            timeout=60000
+            params=PARAMS,
+            headers=HEADERS,
+            timeout=30
         )
 
-        print("[2] 페이지 로딩 완료")
+        print("\nHTTP 상태 코드:", response.status_code)
+        print("응답 크기:", len(response.text))
 
-        page.wait_for_timeout(10000)
+        print("\n응답 앞부분:")
+        print(response.text[:1000])
 
-        print("\n페이지 제목:")
-        print(page.title())
+        if response.status_code != 200:
+            print("\n❌ 요청 실패")
+            return
 
-        print("\n현재 URL:")
-        print(page.url)
+        try:
+            data = response.json()
+        except Exception:
+            print("\n❌ JSON 형식이 아닙니다.")
+            return
 
-        body_text = page.locator("body").inner_text()
+        print("\n✅ JSON 응답 확인!")
+
+        # 응답 구조 확인
+        print("\n최상위 데이터:")
+        print(data.keys())
+
+        # 상품 데이터 찾기
+        shopping_result = data.get("shoppingResult", {})
+
+        products = shopping_result.get("products", [])
+
+        print("\n상품 개수:", len(products))
+
+        if not products:
+            print("\n⚠️ 상품 데이터가 없습니다.")
+            print("\n응답 구조를 확인하기 위해 JSON 일부를 출력합니다.")
+            print(json.dumps(data, ensure_ascii=False)[:5000])
+            return
 
         print("\n" + "=" * 60)
-        print("페이지에서 읽은 텍스트")
+        print("상품 목록")
         print("=" * 60)
 
-        print(body_text[:10000])
+        for i, product in enumerate(products[:10], start=1):
+            print(f"\n[{i}]")
+
+            print("상품명:", product.get("productTitle"))
+            print("가격:", product.get("price"))
+            print("판매처:", product.get("mallName"))
+            print("상품 ID:", product.get("productId"))
+            print("상품 URL:", product.get("productUrl"))
 
         print("\n" + "=" * 60)
-        print("리프트바운드 포함 여부")
+        print("✅ 테스트 완료")
         print("=" * 60)
 
-        if "리프트바운드" in body_text:
-            print("✅ 리프트바운드가 페이지에 존재합니다.")
-        else:
-            print("❌ 리프트바운드가 페이지에 없습니다.")
-
-        print("\n페이지 HTML 길이:", len(page.content()))
-
-        browser.close()
-
-    print("\n테스트 완료!")
+    except Exception as e:
+        print("\n❌ 오류 발생:")
+        print(type(e).__name__, e)
 
 
 if __name__ == "__main__":
