@@ -380,8 +380,22 @@ def send_product_alert(product):
         f"🔎 검색어: `{product['query']}`\n\n"
         f"📦 **상품명**\n"
         f"{name}\n\n"
-        f"💰 **가격:** {price_text}\n"
-        f"🏪 **판매처:** {mall}\n\n"
+       price_limit = PRICE_LIMITS.get(product["query"])
+
+if price_limit is not None:
+    limit_text = f"{int(price_limit):,}원 이하"
+else:
+    limit_text = "제한 없음"
+
+message = (
+    "🚨 **네이버 쇼핑 새 상품 발견!**\n\n"
+    f"🔎 검색어: `{product['query']}`\n\n"
+    f"📦 **상품명**\n"
+    f"{name}\n\n"
+    f"💰 **가격:** {price_text}\n"
+    f"🎯 **알림 기준:** {limit_text}\n"
+    f"🏪 **판매처:** {mall}\n\n"
+)
     )
 
     if url:
