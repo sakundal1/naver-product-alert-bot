@@ -467,77 +467,84 @@ def main():
                 e
             )
 
-   # ========================================================
-# 새 상품 찾기 + 가격 조건 확인
-# ========================================================
+    # ========================================================
+    # 새 상품 찾기 + 가격 조건 확인
+    # ========================================================
 
-new_products = []
+    new_products = []
 
-current_product_ids = set()
+    current_product_ids = set()
 
-for product in all_products:
+    for product in all_products:
 
-    product_id = product["product_id"]
+        product_id = product["product_id"]
 
-    query = product["query"]
+        query = product["query"]
 
-    # 검색어별 가격 제한
-    price_limit = PRICE_LIMITS.get(query)
+        price_limit = PRICE_LIMITS.get(query)
 
-    # 현재 상품 가격
-    price = product["price"]
+        price = product["price"]
 
-    # 검색어 + 상품 ID로 상품 구분
-    seen_key = (
-        query
-        + "|"
-        + product_id
-    )
-
-    # ====================================================
-    # 가격 조건 확인
-    # ====================================================
-
-    if price is None:
-
-        print(
-            "⚠️ 가격 확인 불가:",
-            product["name"]
+        seen_key = (
+            query
+            + "|"
+            + product_id
         )
 
-        continue
+        # ====================================================
+        # 가격 확인
+        # ====================================================
 
-    # 가격 제한이 설정되어 있고
-    # 기준보다 비싸면 알림하지 않음
-    if price_limit is not None and price > price_limit:
+        if price is None:
 
-        print(
-            "💰 가격 초과:",
-            product["name"],
-            f"({int(price):,}원)",
-            f"→ 기준 {int(price_limit):,}원"
+            print(
+                "⚠️ 가격 확인 불가:",
+                product["name"]
+            )
+
+            continue
+
+        # ====================================================
+        # 가격 제한 확인
+        # ====================================================
+
+        if price_limit is not None and price > price_limit:
+
+            print(
+                "💰 가격 초과:",
+                product["name"],
+                f"({int(price):,}원)",
+                f"→ 기준 {int(price_limit):,}원"
+            )
+
+            continue
+
+        # ====================================================
+        # 가격 조건을 만족한 상품 저장
+        # ====================================================
+
+        current_product_ids.add(
+            seen_key
         )
 
-        continue
+        # ====================================================
+        # 처음 발견한 상품인지 확인
+        # ====================================================
 
-    # ====================================================
-    # 가격 조건을 만족한 상품만 확인 목록에 저장
-    # ====================================================
+        if seen_key not in seen_products:
 
-    current_product_ids.add(
-        seen_key
-    )
+            new_products.append(
+                product
+            )
 
-    # 아직 알림하지 않은 상품이면 새 상품
-    if seen_key not in seen_products:
-
-        new_products.append(
-            product
-        )
+    # ========================================================
+    # 결과 출력
+    # ========================================================
 
     print()
 
     print("=" * 60)
+
     print(
         "전체 검색 상품 수:",
         len(all_products)
