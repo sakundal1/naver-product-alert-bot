@@ -18,10 +18,6 @@ DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
 
 NAVER_URL = "https://ns-portal.shopping.naver.com/api/v2/shopping-paged-slot"
 
-PARAMS = {
-    "query": QUERY,
-    "source": "shp_gui",
-}
 
 HEADERS = {
     "User-Agent": (
