@@ -371,7 +371,7 @@ def send_product_alert(product):
 
     message = (
         "🚨 **네이버 쇼핑 새 상품 발견!**\n\n"
-        f"🔎 검색어: `{QUERY}`\n\n"
+        f"🔎 검색어: `{product['query']}`\n\n"
         f"📦 **상품명**\n"
         f"{name}\n\n"
         f"💰 **가격:** {price_text}\n"
