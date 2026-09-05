@@ -14,6 +14,12 @@ QUERIES = [
     "원피스 카드",
 ]
 
+PRICE_LIMITS = {
+    "리프트바운드": 130000,
+    "디지몬 카드": 55000,
+    "원피스 카드": 55000,
+}
+
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
 
 NAVER_URL = "https://ns-portal.shopping.naver.com/api/v2/shopping-paged-slot"
